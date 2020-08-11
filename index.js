@@ -56,4 +56,4 @@ client.once('ready', (message) => {
 });
 
 // log into Bot, must be kept at end of file
-client.login('NzQwNjUzODQ2MTE1NjQ3NTU5.XysJpQ.NYcJfki-qq7_yiLo9F44O39rMiA');
+client.login('NzQwNjUzODQ2MTE1NjQ3NTU5.XysJpQ.eQ_tIBs39sw4TpvSExaZ44mcp6I');
