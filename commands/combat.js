@@ -15,7 +15,7 @@ module.exports.run = async (client, message, args) => {
                 message.channel.send('If issues persist, please see Admin :)');
             } else {
                 // cycles through the loggedIn ids, if any ids match up in the enmap to the name, then we know that player is playing that character
-                client.loggedIn.forEach(el => {
+                client.loggedIn.forEach(async el => {
                     if (client.activeCharacter.get(el) == args[0]) {
                         // players and characters who are involved in combat
                         let accept = 0;
@@ -26,9 +26,10 @@ module.exports.run = async (client, message, args) => {
                         message.channel.send(`${defenderCharacter}! ${offenderCharacter} of the mighty house ${message.author.username} challenges you to one on one combat!`);
                         message.channel.send(`${defenderCharacter}, you have 15 seconds to accept this challenge!`);
 
-                        // message collector
+/*
+                        // message collector                    
                         const filter = m => m.author.id == defenderPlayer;
-                        const collector = message.channel.createMessageCollector(filter, { time: 15000 });
+                        const collector = await message.channel.createMessageCollector(filter, { time: 15000 });
 
                         collector.on('collect', m => {
                             if (m.content == 'Accept') {
@@ -47,12 +48,91 @@ module.exports.run = async (client, message, args) => {
                         collector.on('end', collected => {
                             console.log(`Collected ${collected.size} items`);
                         });
+*/                        
 
-                        // TO DO: need to await the above so the code below executes on time...
+                        // await messages
+                        const filter = msg => msg.author.id == defenderPlayer;
+                        const msgs = await message.channel.awaitMessages(filter, { time: 15000 })                        
+                            .then(collected => {
+                                if (collected.first().content == "Accept") {
+                                    message.channel.send(`${defenderCharacter} has accepted the duel! Letttttttttttt's RUMBLE!!`);
+                                    accept = 1;
+                                    msgs.stop();
+                                } else if (collected.first().content == "Deny") {
+                                    message.channel.send(`${defenderCharacter} has denied the challenge! Probably because ${message.author.username} smells bad or something...`);
+                                }
+                            })
+                            .catch(collected => {
+                                message.channel.send(`No answer after 15 seconds, no fighting for now!`);
+                            });
+
                         console.log(accept);
                         // TODO: this is where the battle will occur!!!!
+
+                        battle_end = 0;
+                        turn = 0
                         if (accept == 1) {
-                            message.channel.send(`The battle happens here!`);
+                            // TODO connect db
+                            var con = mysql.createConnection({
+                                host: "localhost",
+                                user: "root",
+                                password: "@Brit1967",
+                                database: "discordiadb"
+                            });
+            
+                            // run when db is first connected
+                            con.connect(err => {
+                                if (err) throw err;
+                            });            
+
+                            message.channel.send(`Let the battle begin!`);
+                            while (battle_end == 0) {
+                                if (turn % 2 == 0) {
+                                    message.channel.send(`${offenderCharacter}, it is your turn!`);
+
+                                    con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}';`, (err, rows) => {
+                                        if (err) throw err;
+                                        let sql;  
+                                        // insert new user info into player db
+                                        if (rows.length > 0) {
+                                            // loop through rows and display each character!
+                                            // set character to active
+                                            if (client.activeCharacter.get(message.author.id) != undefined) {
+                                                message.channel.send(`Active Character: ${client.activeCharacter.get(message.author.id)}`);
+                                            } else {
+                                                message.channel.send(`No active character selected!`);
+                                            }
+                    
+                                            rows.forEach(element => {
+                                                message.channel.send(`Name: ${element.name} | Level: ${element.level} | Remaining Health: ${element.health} | Lifepoints: ${element.lifepoints} | Speed: ${element.speed}`);
+                                            });
+                    
+                                        } else {
+                                            message.channel.send("Doesn't look like you have any characers yet!");
+                                            message.channel.send("If you are having issues with character display, please see Admin :)");
+                                        }
+                                    }); 
+                                    /*
+                                        TODO
+                                            1. Combat Options -> messageAwait
+                                            2. DB query + update for offender
+                                    */
+                                } else {
+                                    message.channel.send(`${defenderCharacter}, it is your turn!`);
+                                    /*
+                                        TODO
+                                            1. Combat Options -> messageAwait
+                                            2. DB query + update for defender
+                                    */
+                                }
+
+                                // temporary stop case...  
+                                if (turn == 5) {
+                                    battle_end += 1;
+                                }
+
+                                turn += 1;
+                            }
                         }
 
                     } else {
