@@ -24,31 +24,7 @@ module.exports.run = async (client, message, args) => {
                         let defenderPlayer = el;
                         let defenderCharacter = client.activeCharacter.get(el);
                         message.channel.send(`${defenderCharacter}! ${offenderCharacter} of the mighty house ${message.author.username} challenges you to one on one combat!`);
-                        message.channel.send(`${defenderCharacter}, you have 15 seconds to accept this challenge!`);
-
-/*
-                        // message collector                    
-                        const filter = m => m.author.id == defenderPlayer;
-                        const collector = await message.channel.createMessageCollector(filter, { time: 15000 });
-
-                        collector.on('collect', m => {
-                            if (m.content == 'Accept') {
-                                message.channel.send(`${defenderCharacter} has accepted the duel! Letttttttttttt's RUMBLE!!`);
-                                accept = 1;
-                                collector.stop();
-                            } else if (m.content == 'Deny') {
-                                message.channel.send(`${defenderCharacter} has denied the challenge! Probably because ${message.author.username} smells bad or something...`);
-                                collector.stop();
-                            } else {
-                                message.channel.send(`${defenderPlayer}, seriously please respond to the challenge!`);
-                                message.channel.send('Please respond with "Accept" or "Deny", duh');
-                            }
-                        });
-
-                        collector.on('end', collected => {
-                            console.log(`Collected ${collected.size} items`);
-                        });
-*/                        
+                        message.channel.send(`${defenderCharacter}, you have 15 seconds to accept this challenge!`);               
 
                         // await messages
                         const filter = msg => msg.author.id == defenderPlayer;
@@ -57,7 +33,6 @@ module.exports.run = async (client, message, args) => {
                                 if (collected.first().content == "Accept") {
                                     message.channel.send(`${defenderCharacter} has accepted the duel! Letttttttttttt's RUMBLE!!`);
                                     accept = 1;
-                                    msgs.stop();
                                 } else if (collected.first().content == "Deny") {
                                     message.channel.send(`${defenderCharacter} has denied the challenge! Probably because ${message.author.username} smells bad or something...`);
                                 }
@@ -66,13 +41,10 @@ module.exports.run = async (client, message, args) => {
                                 message.channel.send(`No answer after 15 seconds, no fighting for now!`);
                             });
 
-                        console.log(accept);
-                        // TODO: this is where the battle will occur!!!!
-
                         battle_end = 0;
                         turn = 0
                         if (accept == 1) {
-                            // TODO connect db
+
                             var con = mysql.createConnection({
                                 host: "localhost",
                                 user: "root",
@@ -85,54 +57,107 @@ module.exports.run = async (client, message, args) => {
                                 if (err) throw err;
                             });            
 
-                            message.channel.send(`Let the battle begin!`);
-                            while (battle_end == 0) {
-                                if (turn % 2 == 0) {
-                                    message.channel.send(`${offenderCharacter}, it is your turn!`);
+                            // offending player track
+                            let off_level = 0;
+                            let off_health = 0;
+                            let off_weapon = "";
+                            let off_dice = 0
+                            let off_mod = 0
+                            // defending player track
+                            let def_level = 0;
+                            let def_health = 0;
+                            let def_weapon = "";
+                            let def_dice = 0
+                            let def_mod = 0       
 
-                                    con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}';`, (err, rows) => {
+                            con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${offenderPlayer}' and name = '${offenderCharacter}';`, (err, rows) => {
+                                if (err) throw err;
+
+                                off_level = rows[0].level;
+                                off_health = rows[0].health;     
+
+                                con.query(`SELECT * FROM discordiadb.weapon WHERE id = '${rows[0].weaponId}' AND characterId = '${rows[0].id}';`, (err, row) => {
+                                    if (err) throw err;
+    
+                                    off_weapon = row[0].name;
+                                    off_dice = row[0].dice;
+                                    off_mod = row[0].modifier;
+
+                                    con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${defenderPlayer}' and name = '${defenderCharacter}';`, (err, ro) => {
                                         if (err) throw err;
-                                        let sql;  
-                                        // insert new user info into player db
-                                        if (rows.length > 0) {
-                                            // loop through rows and display each character!
-                                            // set character to active
-                                            if (client.activeCharacter.get(message.author.id) != undefined) {
-                                                message.channel.send(`Active Character: ${client.activeCharacter.get(message.author.id)}`);
-                                            } else {
-                                                message.channel.send(`No active character selected!`);
+        
+                                        def_level = ro[0].level;
+                                        def_health = ro[0].health;     
+        
+                                        con.query(`SELECT * FROM discordiadb.weapon WHERE id = '${ro[0].weaponId}' AND characterId = '${ro[0].id}';`, async (e, r) => {
+                                            if (err) throw err;
+            
+                                            def_weapon = r[0].name;
+                                            def_dice = r[0].dice;
+                                            def_mod = r[0].modifier;
+
+                                            message.channel.send(`${offenderCharacter} has ${off_health} hp and is level ${off_level}.`);
+                                            message.channel.send(`They fight with a ${off_weapon} that has (rand(1, ${off_dice}) + ${off_mod}) damage!`);
+                
+                                            message.channel.send(`${defenderCharacter} has ${def_health} hp and is level ${def_level}.`);
+                                            message.channel.send(`They fight with a ${def_weapon} that has (rand(1, ${def_dice}) + ${def_mod}) damage!`);
+
+                                            message.channel.send(`Let the battle begin!`);
+                                            while (battle_end == 0) {
+                                                if (turn % 2 == 0) {
+                                                    message.channel.send(`${offenderCharacter}, it is your turn! Offense! Will you attack or yield?`);
+
+                                                   const filter = msg => msg.author.id == offenderPlayer;
+                                                   const msgs = await message.channel.awaitMessages(filter, { time: 15000 })                        
+                                                       .then(collected => {
+                                                           if (collected.first().content == "Attack") {
+                                                                let damage = Math.floor(Math.random() * (((off_dice - 1) + 1) + 1));
+                                                                damage = damage + off_mod
+                                                                def_health = def_health - damage
+                                                                //let attack = Math.floor(Math.random() * ((r[0].dice - 1) + 1) + 1);
+                                                                message.channel.send(`${offenderCharacter} attacks! They deal ${damage} damage. ${offenderCharacter} has ${off_health} hp left!`);
+                                                           } else if (collected.first().content == "Yield") {
+                                                               message.channel.send(`${offenderCharacter} has yielded! (chicken noises) The fight ends.`);
+                                                           }
+                                                       })
+                                                       .catch(collected => {
+                                                           message.channel.send(`No answer after 15 seconds, you choose to do nothing!`);
+                                                       });
+
+                                                } else {
+                                                    message.channel.send(`${defenderCharacter}, it is your turn! Defend! Will you attack or yield?`);
+
+                                                   const filter = msg => msg.author.id == defenderPlayer;
+                                                   const msgs = await message.channel.awaitMessages(filter, { time: 15000 })                        
+                                                       .then(collected => {
+                                                           if (collected.first().content == "Attack") {
+                                                                let damage = Math.floor(Math.random() * (((def_dice - 1) + 1) + 1));
+                                                                damage = damage + def_mod
+                                                                def_health = def_health - damage
+                                                                message.channel.send(`${defenderCharacter} attacks! They deal ${damage} damage. ${offenderCharacter} has ${off_health} hp left!`);
+                                                           } else if (collected.first().content == "Yield") {
+                                                               message.channel.send(`${defenderCharacter} has yielded! (chicken noises) The fight ends.`);
+                                                           }
+                                                       })
+                                                       .catch(collected => {
+                                                           message.channel.send(`No answer after 15 seconds, you choose to do nothing!`);
+                                                       });
+
+                                                }
+                
+                                                // temporary stop case...  
+                                                if (turn == 2) {
+                                                    battle_end += 1;
+                                                }
+                
+                                                turn += 1;
                                             }
-                    
-                                            rows.forEach(element => {
-                                                message.channel.send(`Name: ${element.name} | Level: ${element.level} | Remaining Health: ${element.health} | Lifepoints: ${element.lifepoints} | Speed: ${element.speed}`);
-                                            });
-                    
-                                        } else {
-                                            message.channel.send("Doesn't look like you have any characers yet!");
-                                            message.channel.send("If you are having issues with character display, please see Admin :)");
-                                        }
-                                    }); 
-                                    /*
-                                        TODO
-                                            1. Combat Options -> messageAwait
-                                            2. DB query + update for offender
-                                    */
-                                } else {
-                                    message.channel.send(`${defenderCharacter}, it is your turn!`);
-                                    /*
-                                        TODO
-                                            1. Combat Options -> messageAwait
-                                            2. DB query + update for defender
-                                    */
-                                }
-
-                                // temporary stop case...  
-                                if (turn == 5) {
-                                    battle_end += 1;
-                                }
-
-                                turn += 1;
-                            }
+                                            // TODO update results into db
+                                        });
+                                    });                            
+                                });
+                            });
+                            
                         }
 
                     } else {
