@@ -112,10 +112,10 @@ module.exports.run = async (client, message, args) => {
                                                        .then(collected => {
                                                            if (collected.first().content == "Attack") {
                                                                 let damage = Math.floor(Math.random() * (((off_dice - 1) + 1) + 1));
-                                                                damage = damage + off_mod
-                                                                def_health = def_health - damage
+                                                                damage = damage + off_mod;
+                                                                def_health = def_health - damage;
                                                                 //let attack = Math.floor(Math.random() * ((r[0].dice - 1) + 1) + 1);
-                                                                message.channel.send(`${offenderCharacter} attacks! They deal ${damage} damage. ${offenderCharacter} has ${off_health} hp left!`);
+                                                                message.channel.send(`${offenderCharacter} attacks! They deal ${damage} damage. ${defenderCharacter} has ${def_health} hp left!`);
                                                            } else if (collected.first().content == "Yield") {
                                                                message.channel.send(`${offenderCharacter} has yielded! (chicken noises) The fight ends.`);
                                                            }
@@ -132,8 +132,8 @@ module.exports.run = async (client, message, args) => {
                                                        .then(collected => {
                                                            if (collected.first().content == "Attack") {
                                                                 let damage = Math.floor(Math.random() * (((def_dice - 1) + 1) + 1));
-                                                                damage = damage + def_mod
-                                                                def_health = def_health - damage
+                                                                damage = damage + def_mod;
+                                                                off_health = off_health - damage;
                                                                 message.channel.send(`${defenderCharacter} attacks! They deal ${damage} damage. ${offenderCharacter} has ${off_health} hp left!`);
                                                            } else if (collected.first().content == "Yield") {
                                                                message.channel.send(`${defenderCharacter} has yielded! (chicken noises) The fight ends.`);
@@ -146,7 +146,7 @@ module.exports.run = async (client, message, args) => {
                                                 }
                 
                                                 // temporary stop case...  
-                                                if (turn == 2) {
+                                                if (turn == 4) {
                                                     battle_end += 1;
                                                 }
                 
