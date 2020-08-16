@@ -3,11 +3,12 @@ module.exports.run = async (client, message, args) => {
     mysql = require("mysql");
 
     let found = 0
+    let char_found = 0;
 
     client.loggedIn.forEach(element => {
         if (element == message.author.id) {
             found = 1;
-            if (args.length != 1) {
+            if (args.length != 2) {
                 message.channel.send("Invalid !Combat");
                 message.channel.send('Please use the commmand - "!Combat character_name life_points"');
                 message.channel.send('For example, "!Create StrongBelvas 200"');
@@ -17,6 +18,7 @@ module.exports.run = async (client, message, args) => {
                 // cycles through the loggedIn ids, if any ids match up in the enmap to the name, then we know that player is playing that character
                 client.loggedIn.forEach(async el => {
                     if (client.activeCharacter.get(el) == args[0]) {
+                        char_found = 1;
                         // players and characters who are involved in combat
                         let accept = 0;
                         let offenderPlayer = message.author.id;
@@ -75,6 +77,7 @@ module.exports.run = async (client, message, args) => {
 
                                 off_level = rows[0].level;
                                 off_health = rows[0].health;     
+                                off_lifepoints = rows[0].lifepoints;
 
                                 con.query(`SELECT * FROM discordiadb.weapon WHERE id = '${rows[0].weaponId}' AND characterId = '${rows[0].id}';`, (err, row) => {
                                     if (err) throw err;
@@ -88,6 +91,7 @@ module.exports.run = async (client, message, args) => {
         
                                         def_level = ro[0].level;
                                         def_health = ro[0].health;     
+                                        def_lifepoints = ro[0].lifepoints;
         
                                         con.query(`SELECT * FROM discordiadb.weapon WHERE id = '${ro[0].weaponId}' AND characterId = '${ro[0].id}';`, async (e, r) => {
                                             if (err) throw err;
@@ -96,13 +100,15 @@ module.exports.run = async (client, message, args) => {
                                             def_dice = r[0].dice;
                                             def_mod = r[0].modifier;
 
-                                            message.channel.send(`${offenderCharacter} has ${off_health} hp and is level ${off_level}.`);
-                                            message.channel.send(`They fight with a ${off_weapon} that has (rand(1, ${off_dice}) + ${off_mod}) damage!`);
-                
-                                            message.channel.send(`${defenderCharacter} has ${def_health} hp and is level ${def_level}.`);
-                                            message.channel.send(`They fight with a ${def_weapon} that has (rand(1, ${def_dice}) + ${def_mod}) damage!`);
+                                            if (off_lifepoints < args[1]) {
+                                                battle_end = 1;
+                                                message.channel.send(`${offenderCharacter} does not have enough life points to wager!`);
+                                            } else {
+                                                message.channel.send(`${offenderCharacter} has ${off_health} hp and is level ${off_level}. They fight with a ${off_weapon} that has (rand(1, ${off_dice}) + ${off_mod}) damage!`);
+                                                message.channel.send(`${defenderCharacter} has ${def_health} hp and is level ${def_level}. They fight with a ${def_weapon} that has (rand(1, ${def_dice}) + ${def_mod}) damage!`);
+                                                message.channel.send(`Let the battle begin!`);
+                                            }
 
-                                            message.channel.send(`Let the battle begin!`);
                                             while (battle_end == 0) {
                                                 if (turn % 2 == 0) {
                                                     message.channel.send(`${offenderCharacter}, it is your turn! Offense! Will you attack or yield?`);
@@ -142,17 +148,59 @@ module.exports.run = async (client, message, args) => {
                                                        .catch(collected => {
                                                            message.channel.send(`No answer after 15 seconds, you choose to do nothing!`);
                                                        });
-
                                                 }
                 
-                                                // temporary stop case...  
-                                                if (turn == 4) {
+                                                // win and lose conditions, db updates for life points (and death check)
+                                                if (off_health <= 0) {
+                                                    message.channel.send(`The battle has ended! ${defenderCharacter} is victorious, they win ${args[1]} lifepoints!!`);
                                                     battle_end += 1;
+                                                    // take away life points from loser
+                                                    if ((off_lifepoints - Number(args[1])) > 0) {
+                                                        sql = `UPDATE discordiadb.character SET lifepoints = ${off_lifepoints - Number(args[1])} WHERE playerId = '${offenderPlayer}' AND name = '${offenderCharacter}';`;
+                                                        con.query(sql, (err) => {
+                                                            if (err) throw err;
+                                                        });
+                                                    } else {
+                                                        sql = `UPDATE discordiadb.character SET lifepoints = 0, alive = 0 WHERE playerId = '${offenderPlayer}' AND name = '${offenderCharacter}';`;
+                                                        con.query(sql, (err) => {
+                                                            if (err) throw err;
+                                                        });
+                                                        client.activeCharacter.delete(offenderPlayer);
+                                                        message.channel.send(`It appears ${offenderCharacter} has died...`);
+                                                    }
+
+                                                    // add life points to winner
+                                                    sql = `UPDATE discordiadb.character SET lifepoints = ${def_lifepoints + Number(args[1])} WHERE playerId = '${defenderPlayer}' AND name = '${defenderCharacter}';`;
+                                                    con.query(sql, (err) => {
+                                                        if (err) throw err;
+                                                    });
+                                                } else if (def_health <= 0) {
+                                                    message.channel.send(`The battle has ended! ${offenderCharacter} is victorious, they win ${args[1]} lifepoints!!!!`);
+                                                    battle_end += 1;
+                                                    // take away life points from loser
+                                                    if ((def_lifepoints - Number(args[1])) > 0) {
+                                                        sql = `UPDATE discordiadb.character SET lifepoints = ${def_lifepoints - Number(args[1])} WHERE playerId = '${defenderPlayer}' AND name = '${defenderCharacter}';`;
+                                                        con.query(sql, (err) => {
+                                                            if (err) throw err;
+                                                        });
+                                                    } else {
+                                                        sql = `UPDATE discordiadb.character SET lifepoints = 0, alive = 0 WHERE playerId = '${defenderPlayer}' AND name = '${defenderCharacter}';`;
+                                                        con.query(sql, (err) => {
+                                                            if (err) throw err;
+                                                        });
+                                                        client.activeCharacter.delete(defenderPlayer);
+                                                        message.channel.send(`It appears ${defenderCharacter} has died...`);
+                                                    }
+                                                    // add life points to winner
+                                                    sql = `UPDATE discordiadb.character SET lifepoints = ${off_lifepoints + Number(args[1])} WHERE playerId = '${offenderPlayer}' AND name = '${offenderCharacter}';`;
+                                                    con.query(sql, (err) => {
+                                                        if (err) throw err;
+                                                    });
+                                                } else {
+                                                    turn += 1;
                                                 }
-                
-                                                turn += 1;
                                             }
-                                            // TODO update results into db
+
                                         });
                                     });                            
                                 });
@@ -160,10 +208,13 @@ module.exports.run = async (client, message, args) => {
                             
                         }
 
-                    } else {
-                        message.channel.send(`Doesn't seem as though ${args[0]} is online at the moment`);
-                    }
+                    } 
+                    
                 });
+
+                if (char_found == 0) {
+                    message.channel.send(`Doesn't seem as though ${args[0]} is online at the moment!`);
+                }
             }
         }
     });

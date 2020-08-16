@@ -29,12 +29,14 @@ module.exports.run = async (client, message, args) => {
                     });
                     /* TODO: COME BACK AND RANDOMIZE SOME STATS UPON CREATION??? */
                     con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}' and name = '${args[0]}';`, (err, rows) => {
+                        if (err) throw err;
                         if (rows < 1) {
                             /* save the character! */
-                            sql = `INSERT INTO discordiadb.character (playerId, weaponId, abilityId, name, level, health, lifepoints, speed) VALUES ('${message.author.id}', '0', '0', '${args[0]}', 1, 45, 60, 30);`;
+                            sql = `INSERT INTO discordiadb.character (playerId, weaponId, abilityId, name, level, health, lifepoints, speed, alive) VALUES ('${message.author.id}', '0', '0', '${args[0]}', 1, 15, 60, 30, 1);`;
                             con.query(sql);
                             // make inventory
                             con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}' and name = '${args[0]}';`, (e, r) => {
+                                if (e) throw e;
                                 sql = `INSERT INTO discordiadb.inventory (characterId, goldCoins) VALUES ('${r[0].id}', 30);`;
                                 con.query(sql);
                                 sql = `INSERT INTO discordiadb.weapon (name, description, characterId, dice, modifier, value) VALUES ('StarterSword', 'A dull sword, will have to upgrade soon!', ${r[0].id}, 6, 2, 20);`;

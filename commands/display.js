@@ -40,7 +40,13 @@ module.exports.run = async (client, message, args) => {
                         }
 
                         rows.forEach(element => {
-                            message.channel.send(`Name: ${element.name} | Level: ${element.level} | Remaining Health: ${element.health} | Lifepoints: ${element.lifepoints} | Speed: ${element.speed}`);
+                            let death = "";
+                            if (element.alive == 1) {
+                                death = "Alive";
+                            } else {
+                                death = "Dead";
+                            }
+                            message.channel.send(`Name: ${element.name} | Level: ${element.level} | Remaining Health: ${element.health} | Lifepoints: ${element.lifepoints} | Speed: ${element.speed} | Status: ${death}`);
                         });
 
                     } else {

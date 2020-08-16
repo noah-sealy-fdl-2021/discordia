@@ -32,9 +32,17 @@ module.exports.run = async (client, message, args) => {
                     let sql;  
                     // insert new user info into player db
                     if (rows.length > 0) {
-                        // set character to active
-                        client.activeCharacter.set(rows[0].playerId, rows[0].name);
-                        message.channel.send(`Character select sucessful! ${rows[0].name} is now your active character!`).catch(err);
+                        if (rows[0].alive == 1) {
+                            // first remove current active character 
+                            if (client.activeCharacter.get(message.author.id)) {
+                                client.activeCharacter.delete(message.author.id);
+                            }
+                            // set character to active
+                            client.activeCharacter.set(rows[0].playerId, rows[0].name);
+                            message.channel.send(`Character select sucessful! ${rows[0].name} is now your active character!`).catch(err);
+                        } else {
+                            message.channel.send(`It seems ${rows[0].name} is dead! Perhaps there is a way to bring them back...`);
+                        }
                     } else {
                         message.channel.send("That character does not exist!");
                         message.channel.send("If you are having issues with character selection, please see Admin :)");
