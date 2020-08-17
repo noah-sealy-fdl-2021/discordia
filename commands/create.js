@@ -30,7 +30,7 @@ module.exports.run = async (client, message, args) => {
                     /* TODO: COME BACK AND RANDOMIZE SOME STATS UPON CREATION??? */
                     con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}' and name = '${args[0]}';`, (err, rows) => {
                         if (err) throw err;
-                        if (rows < 1) {
+                        if (rows.length < 1) {
                             /* save the character! */
                             sql = `INSERT INTO discordiadb.character (playerId, weaponId, abilityId, name, level, health, lifepoints, speed, alive) VALUES ('${message.author.id}', '0', '0', '${args[0]}', 1, 15, 60, 30, 1);`;
                             con.query(sql);
