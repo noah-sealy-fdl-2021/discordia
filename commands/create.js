@@ -39,8 +39,16 @@ module.exports.run = async (client, message, args) => {
                                 if (e) throw e;
                                 sql = `INSERT INTO discordiadb.inventory (characterId, goldCoins) VALUES ('${r[0].id}', 30);`;
                                 con.query(sql);
-                                sql = `INSERT INTO discordiadb.weapon (name, description, characterId, dice, modifier, value) VALUES ('StarterSword', 'A dull sword, will have to upgrade soon!', ${r[0].id}, 6, 2, 20);`;
-                                con.query(sql);
+                                // TO DO LOTS of testing!
+                                con.query(`INSERT INTO discordiadb.weapon (name, description, characterId, dice, modifier, value) VALUES ('StarterSword', 'A dull sword, will have to upgrade soon!', ${r[0].id}, 6, 2, 20);`, (e) => {
+                                    if (e) throw e;
+                                    con.query(`SELECT * FROM discordiadb.weapon WHERE characterId = '${r[0].id}' and name = 'StarterSword'`, (e, ro) => {
+                                        if (e) throw e;
+                                        con.query(`UPDATE discordiadb.character SET weaponId = '${ro[0].id}' WHERE playerId = '${message.author.id}' AND id = '${r[0].id}';`, (e) => {
+                                            if (e) throw e;
+                                        });
+                                    });
+                                });
                             });                         
 
                             message.channel.send(`Character created! Welcome to Discordia, ${args[0]}`).catch(err);

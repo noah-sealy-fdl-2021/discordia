@@ -12,7 +12,6 @@ module.exports.run = async (client, message, args) => {
     // run when db is first connected
     con.connect(err => {
         if (err) throw err;
-        console.log("Connected to database!");
     });
 
     if (args.length != 2) {
