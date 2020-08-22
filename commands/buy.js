@@ -1,7 +1,8 @@
 module.exports.run = async (client, message, args) => {
     mysql = require("mysql");
 
-    let found = 0
+    let found = 0;
+    let weapon_found = 0;
 
     client.loggedIn.forEach(element => {
         if (element == message.author.id) {
@@ -27,11 +28,10 @@ module.exports.run = async (client, message, args) => {
 
                     con.query(`SELECT * FROM discordiadb.shop;`, (err, rows) => {
                         if (err) throw err;
-
                         if (rows.length > 0) {
                             rows.forEach(async element => {
                                 if (element.name == args[0]) {
-                                    message.channel.send(`Are you sure you want to buy ${args[0]} for $${element.value}? Yes or No`);               
+                                    message.channel.send(`Are you sure you want to buy ${args[0]} for ${element.value} gold coins? Yes or No`);               
                                     // await messages
                                     const filter = msg => msg.author.id == message.author.id;
                                     const msgs = await message.channel.awaitMessages(filter, { time: 15000 })                        
@@ -44,16 +44,28 @@ module.exports.run = async (client, message, args) => {
                                                         con.query(`SELECT * FROM discordiadb.inventory WHERE characterId = '${row[0].id}'`, (err, ro) => {
                                                             if (err) throw err;
                                                                 if (ro[0].goldCoins > element.value) {
-                                                                    con.query(`INSERT INTO discordiadb.weapon (name, description, characterId, dice, modifier, value) VALUES ('${element.name}', '${element.description}', '${row[0].id}', ${element.dice}, ${element.modifier}, ${element.value});`, (err) => {
+                                                                    con.query(`SELECT * FROM discordiadb.weapon WHERE characterId = '${row[0].id}'`, (err, r) => {
                                                                         if (err) throw err;
-                                                                        let remaining = ro[0].goldCoins - element.value;
-                                                                        con.query(`UPDATE discordiadb.inventory SET goldCoins = ${remaining} WHERE characterId = ${row[0].id};`, (err) =>{
-                                                                            if (err) throw err;
-                                                                            message.channel.send(`Transaction complete! ${args[0]} can be found in your inventory. You spent $${element.value}, you have $${remaining} remaining.`);
+                                                                        r.forEach(async el => {
+                                                                            if (el.name == args[0]) {
+                                                                                weapon_found = 1;
+                                                                            }
                                                                         });
+                                                                        if (weapon_found == 0) {
+                                                                            con.query(`INSERT INTO discordiadb.weapon (name, description, characterId, dice, modifier, value) VALUES ('${element.name}', '${element.description}', '${row[0].id}', ${element.dice}, ${element.modifier}, ${element.value});`, (err) => {
+                                                                                if (err) throw err;
+                                                                                let remaining = ro[0].goldCoins - element.value;
+                                                                                con.query(`UPDATE discordiadb.inventory SET goldCoins = ${remaining} WHERE characterId = ${row[0].id};`, (err) =>{
+                                                                                    if (err) throw err;
+                                                                                    message.channel.send(`Transaction complete! ${args[0]} can be found in your inventory. You spent ${element.value} gold coins which leaves you with ${remaining}.`);
+                                                                                });
+                                                                            });
+                                                                        } else {
+                                                                            message.channel.send(`Seems as though you already something similar to ${args[0]}...`);
+                                                                        }
                                                                     });
                                                                 } else {
-                                                                    message.channel.send(`Seems as though you lack the funds to buy ${args}`);
+                                                                    message.channel.send(`Seems as though you lack the funds to buy ${args[0]}`);
                                                                 }
                                                             });
                                                     } else {
@@ -71,11 +83,9 @@ module.exports.run = async (client, message, args) => {
                                     message.channel.send(`Unable to find ${args[0]} in the shop!`);
                                 }
                             });
-
                         } else {
                             message.channel.send("Looks like the shop is empty right now!");
                         }
-
                     }); 
                 } else {
                     message.channel.send(`Please select an active character in order to buy from the shop (!Select)`);

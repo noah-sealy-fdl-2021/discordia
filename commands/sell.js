@@ -20,52 +20,59 @@ module.exports.run = async (client, message, args) => {
                         password: "@Brit1967",
                         database: "discordiadb"
                     });
-
                     // run when db is first connected
                     con.connect(err => {
                         if (err) throw err;
                     });
-
-                    con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}' and name = '${client.activeCharacter.get(message.author.id)}';`, (err, rows) => {
+                    con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}' and name = '${client.activeCharacter.get(message.author.id)}';`, async (err, rows) => {
                         if (err) throw err;
-                        // check for weapon in inventory
-                        con.query(`SELECT * FROM discordiadb.weapon WHERE characterId = '${rows[0].id}';`, (err, row) => {
-                            if (err) throw err;
-                            row.forEach(element => {
-                                if (element.name == args[0]) {
-                                    weapon_found = 1;
-                                    // if the weapon is named StarterSword, do not sell it
-                                    if (element.name != "StarterSword") {
-                                        // if the weapon is equipped, remove the equip
-                                        con.query(`UPDATE discordiadb.character SET weaponId = (SELECT id FROM discordiadb.weapon WHERE characterId='${rows[0].id}' and name='StarterSword') WHERE id = '${rows[0].id}';`, (err) => {
-                                            if (err) throw err;
-                                            // add weapon to the shop
-                                            con.query(`INSERT INTO discordiadb.shop (name, description, dice, modifier, value) VALUES ('${element.name}', '${element.description}', ${element.dice}, ${element.modifier}, ${element.value})`, (err) => {
-                                                if (err) throw err;
-                                                // add weapon.value to inventory
-                                                con.query(`SELECT * FROM discordiadb.inventory WHERE characterId = ${rows[0].id};`, (err, ro) => {
-                                                    if (err) throw err;
-                                                    let gold = ro[0].goldCoins + element.value;
-                                                    con.query(`UPDATE discordiadb.inventory SET goldCoins = ${gold} WHERE characterId = '${rows[0].id}';`, (err) => {
+                        message.channel.send(`Are you sure you want to buy ${args[0]}? Yes or No`);               
+                        // await messages
+                        const filter = msg => msg.author.id == message.author.id;
+                        const msgs = await message.channel.awaitMessages(filter, { time: 15000 })                        
+                            .then(collected => {
+                                if (collected.first().content == "Yes") {
+                                    // check for weapon in inventory
+                                    con.query(`SELECT * FROM discordiadb.weapon WHERE characterId = '${rows[0].id}';`, (err, row) => {
+                                        if (err) throw err;
+                                        row.forEach(element => {
+                                            if (element.name == args[0]) {
+                                                weapon_found = 1;
+                                                // if the weapon is named StarterSword, do not sell it
+                                                if (element.name != "StarterSword") {
+                                                    // if the weapon is equipped, remove the equip
+                                                    con.query(`UPDATE discordiadb.character SET weaponId = (SELECT id FROM discordiadb.weapon WHERE characterId='${rows[0].id}' and name='StarterSword') WHERE id = '${rows[0].id}';`, (err) => {
                                                         if (err) throw err;
-                                                        // remove weapon from inventory
-                                                        con.query(`DELETE from discordiadb.weapon WHERE characterId = '${rows[0].id}' and name = '${args[0]}';`, (err) => {
+                                                        // add weapon.value to inventory
+                                                        con.query(`SELECT * FROM discordiadb.inventory WHERE characterId = ${rows[0].id};`, (err, ro) => {
                                                             if (err) throw err;
-                                                            message.channel.send(`Transaction complete. You sold ${element.name} for ${element.value} gold coins!`);
+                                                            let gold = ro[0].goldCoins + element.value;
+                                                            con.query(`UPDATE discordiadb.inventory SET goldCoins = ${gold} WHERE characterId = '${rows[0].id}';`, (err) => {
+                                                                if (err) throw err;
+                                                                // remove weapon from inventory
+                                                                con.query(`DELETE from discordiadb.weapon WHERE characterId = '${rows[0].id}' and name = '${args[0]}';`, (err) => {
+                                                                    if (err) throw err;
+                                                                    message.channel.send(`Transaction complete. You sold ${element.name} for ${element.value} gold coins!`);
+                                                                });
+                                                            });
                                                         });
                                                     });
-                                                });
-                                            }); 
+                                                } else {
+                                                    message.channel.send(`The shop does not want to buy your StarterSword, trust me, we have enough...`);
+                                                }
+                                            } 
                                         });
-                                    } else {
-                                        message.channel.send(`The shop down not want to buy your StarterSword, trust me, we have enough...`);
-                                    }
-                                } 
-                                if (weapon_found == 0) {
-                                    message.channel.send(`Unable to sell ${args[0]}, it was not found in your inventory.`)
+                                        if (weapon_found == 0) {
+                                            message.channel.send(`Unable to sell ${args[0]}, it was not found in your inventory.`)
+                                        }
+                                    });
+                                } else if (collected.first().content == "No") {
+                                    message.channel.send(`You did not sell ${args[0]}`);
                                 }
+                            })
+                            .catch(collected => {
+                                message.channel.send(`No answer after 15 seconds, transaction cancelled!`);
                             });
-                        });
                     });
 
                 } else {
