@@ -32,7 +32,7 @@ module.exports.run = async (client, message, args) => {
                         if (err) throw err;
                         if (rows.length < 1) {
                             /* save the character! */
-                            sql = `INSERT INTO discordiadb.character (playerId, weaponId, abilityId, name, level, health, lifepoints, speed, alive) VALUES ('${message.author.id}', '0', '0', '${args[0]}', 1, 15, 60, 30, 1);`;
+                            sql = `INSERT INTO discordiadb.character (playerId, weaponId, abilityId, name, wins, health, lifepoints, speed, alive) VALUES ('${message.author.id}', '0', '0', '${args[0]}', 0, 15, 60, 30, 1);`;
                             con.query(sql);
                             // make inventory
                             con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}' and name = '${args[0]}';`, (e, r) => {

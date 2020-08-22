@@ -46,7 +46,7 @@ module.exports.run = async (client, message, args) => {
                             } else {
                                 death = "Dead";
                             }
-                            message.channel.send(`Name: ${element.name} | Level: ${element.level} | Remaining Health: ${element.health} | Lifepoints: ${element.lifepoints} | Speed: ${element.speed} | Status: ${death}`);
+                            message.channel.send(`Name: ${element.name} | Wins: ${element.wins} | Remaining Health: ${element.health} | Lifepoints: ${element.lifepoints} | Speed: ${element.speed} | Status: ${death}`);
                         });
 
                     } else {
