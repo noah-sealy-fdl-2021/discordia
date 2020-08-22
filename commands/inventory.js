@@ -40,7 +40,7 @@ module.exports.run = async (client, message, args) => {
                             if (rows.length > 0) {
                                 // loop through rows and display each weapon!
                                 rows.forEach(element => {
-                                    message.channel.send(`Name: ${element.name} | Description: ${element.description} | Hit Dice: ${element.dice} | Modifier: +${element.modifier} | Value: ${element.value} gold coins`);
+                                    message.channel.send(`Name: ${element.name} | Description: ${element.description} | Win Requirement: ${element.winReq} | Hit Dice: ${element.dice} | Modifier: +${element.modifier} | Value: ${element.value} gold coins`);
                                 });
     
                             } else {

@@ -28,20 +28,27 @@ module.exports.run = async (client, message, args) => {
                         if (err) throw err;
                     });
 
-                    con.query(`SELECT * FROM discordiadb.weapon WHERE characterId = (SELECT id FROM discordiadb.character WHERE playerId = ${message.author.id} and name = '${client.activeCharacter.get(message.author.id)}') and name = '${args[0]}';`, (err, rows) => {
+                    con.query(`SELECT * FROM discordiadb.character WHERE playerId = '${message.author.id}' and name = '${client.activeCharacter.get(message.author.id)}';`, (err, rows) => {
                         if (err) throw err;
-                        let sql;  
-                        // insert new user info into player db
-                        if (rows.length > 0) {
-                            // set character to active
-                            sql = `UPDATE discordiadb.character SET weaponId = ${rows[0].id} WHERE playerId = ${message.author.id} and name = '${client.activeCharacter.get(message.author.id)}';`;
-                            con.query(sql);
-                            message.channel.send(`Weapon equipped! ${rows[0].name} is now your active weapon!`).catch(err);
-                        } else {
-                            message.channel.send("That weapon does not exist!");
-                            message.channel.send("If you are having issues with equiping a weapon, please see Admin :)");
-                        }
-                    }); 
+                        con.query(`SELECT * FROM discordiadb.weapon WHERE characterId = '${rows[0].id}' and name = '${args[0]}';`, (err, row) => {
+                            if (err) throw err;
+                            let sql;  
+                            // insert new user info into player db
+                            if (row.length > 0) {
+                                if (row[0].winReq <= rows[0].wins) {
+                                    // set character to active
+                                    sql = `UPDATE discordiadb.character SET weaponId = ${row[0].id} WHERE playerId = ${message.author.id} and name = '${client.activeCharacter.get(message.author.id)}';`;
+                                    con.query(sql);
+                                    message.channel.send(`Weapon equipped! ${row[0].name} is now your active weapon!`).catch(err);
+                                } else {
+                                    message.channel.send(`Seems as though you aren't strong enough yet to wield ${row[0].name}...`);
+                                }
+                            } else {
+                                message.channel.send("That weapon does not exist!");
+                                message.channel.send("If you are having issues with equiping a weapon, please see Admin :)");
+                            }
+                        }); 
+                    });
                 } else {
                     message.channel.send(`Please select an active character in order to equip a weapon (!Select)`);
                     message.channel.send("If you are having issues with equiping a weapon, please see Admin :)");
